@@ -37,7 +37,7 @@ function openVideo(index) {
     if (index >= 0 && index < queue.length) {
       let video = queue.splice(index, 1)[0];
       chrome.storage.local.set({queue: queue}, function() {
-        chrome.tabs.create({url: video.url});
+        window.open(video.url, '_blank');
         displayQueue();  // Refresh the display
       });
     }
@@ -45,5 +45,5 @@ function openVideo(index) {
 }
 
 // Display queue on load
-console.log('queue script loaded');
+displayQueue();
 window.addEventListener('DOMContentLoaded', displayQueue);
