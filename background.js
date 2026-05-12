@@ -23,11 +23,19 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
   }
 
   chrome.tabs.sendMessage(tab.id, {action: "queueVideo", info: info}, function(response) {
+    if (chrome.runtime.lastError) {
+      console.error('Queue message failed:', chrome.runtime.lastError.message, info, tab);
+      return;
+    }
+
+    console.log('Queue response from content script:', response);
     if (response && response.video) {
       chrome.storage.local.get(['queue'], function(result) {
         let queue = result.queue || [];
         queue.push(response.video);
-        chrome.storage.local.set({queue: queue});
+        chrome.storage.local.set({queue: queue}, function() {
+          console.log('Video added to queue:', response.video);
+        });
       });
     }
   });

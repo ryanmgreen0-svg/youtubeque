@@ -1,5 +1,6 @@
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "queueVideo") {
+    console.log('queueVideo request received', request, sender);
     let info = request.info || {};
     let url = info.linkUrl || window.location.href;
     let title = 'YouTube Video';
@@ -52,5 +53,6 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
 
     sendResponse({video: {title: title, thumbnail: thumbnail, url: url}});
+    return true;
   }
 });
