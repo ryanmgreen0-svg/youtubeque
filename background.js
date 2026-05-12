@@ -1,13 +1,13 @@
 chrome.contextMenus.create({
   title: "Add to Queue",
   contexts: ["page", "video", "image", "link"],
-  documentUrlPatterns: ["*://www.youtube.com/watch*"],
+  documentUrlPatterns: ["*://www.youtube.com/*"],
   onclick: function(info, tab) {
-    chrome.tabs.sendMessage(tab.id, {action: "getVideoInfo"}, function(response) {
-      if (response) {
+    chrome.tabs.sendMessage(tab.id, {action: "queueVideo", info: info}, function(response) {
+      if (response && response.video) {
         chrome.storage.local.get(['queue'], function(result) {
           let queue = result.queue || [];
-          queue.push(response);
+          queue.push(response.video);
           chrome.storage.local.set({queue: queue});
         });
       }
