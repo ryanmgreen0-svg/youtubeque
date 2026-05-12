@@ -1,6 +1,7 @@
 chrome.contextMenus.create({
   title: "Add to Queue",
-  contexts: ["video"],
+  contexts: ["page", "video", "image", "link"],
+  documentUrlPatterns: ["*://www.youtube.com/watch*"],
   onclick: function(info, tab) {
     chrome.tabs.sendMessage(tab.id, {action: "getVideoInfo"}, function(response) {
       if (response) {
