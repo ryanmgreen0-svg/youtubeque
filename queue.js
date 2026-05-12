@@ -17,9 +17,16 @@ function displayQueue() {
       div.innerHTML = `
         <img src="${video.thumbnail}" width="120" style="float:left; margin-right:10px;">
         <h3>${video.title}</h3>
-        <button onclick="openVideo(${index})">Open and Remove</button>
+        <button class="open-remove-button" data-index="${index}">Open and Remove</button>
       `;
       container.appendChild(div);
+    });
+
+    container.querySelectorAll('.open-remove-button').forEach(button => {
+      button.addEventListener('click', event => {
+        let index = Number(event.currentTarget.getAttribute('data-index'));
+        openVideo(index);
+      });
     });
   });
 }
@@ -38,4 +45,5 @@ function openVideo(index) {
 }
 
 // Display queue on load
-displayQueue();
+console.log('queue script loaded');
+window.addEventListener('DOMContentLoaded', displayQueue);
