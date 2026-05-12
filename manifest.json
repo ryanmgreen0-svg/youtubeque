@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Queue",
+  "version": "1.0",
+  "description": "Save YouTube videos to a queue and view on GitHub website",
+  "permissions": ["contextMenus", "storage", "activeTab", "tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/*", "*://youtu.be/*"],
+      "js": ["content.js"]
+    },
+    {
+      "matches": ["https://ryanmgreen96.github.io/youtubeque/*"],
+      "js": ["queue.js"]
+    }
+  ]
+}
