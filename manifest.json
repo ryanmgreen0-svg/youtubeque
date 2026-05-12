@@ -9,7 +9,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://www.youtube.com/*", "*://youtu.be/*"],
+      "matches": ["*://*.youtube.com/*", "*://youtube.com/*", "*://*.youtu.be/*", "*://youtu.be/*"],
       "js": ["content.js"]
     },
     {
