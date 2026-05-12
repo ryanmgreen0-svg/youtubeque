@@ -13,7 +13,7 @@
       "js": ["content.js"]
     },
     {
-      "matches": ["https://yourusername.github.io/youtube-queue/*"],  // Replace with your actual GitHub Pages URL
+      "matches": ["https://ryanmgreen96.github.io/youtubeque/*"],
       "js": ["queue.js"]
     }
   ]
