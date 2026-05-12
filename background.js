@@ -1,3 +1,5 @@
+console.log('background script loaded');
+
 function createQueueMenu() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({

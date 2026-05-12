@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "YouTube Queue",
   "version": "1.0",
+  "author": "ryanmgreen0-svg",
   "description": "Save YouTube videos to a queue and view on GitHub website",
   "permissions": ["contextMenus", "storage", "activeTab", "tabs"],
   "background": {

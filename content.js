@@ -1,3 +1,5 @@
+console.log('content script loaded');
+
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "queueVideo") {
     console.log('queueVideo request received', request, sender);

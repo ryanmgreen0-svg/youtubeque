@@ -1,3 +1,5 @@
+console.log('queue script loaded');
+
 function displayQueue() {
   chrome.storage.local.get(['queue'], function(result) {
     let queue = result.queue || [];

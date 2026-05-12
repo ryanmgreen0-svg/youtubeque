@@ -2,6 +2,8 @@
 
 This Microsoft Edge extension allows you to save YouTube videos to a queue by right-clicking on a video and selecting "Add to Queue". The queue is stored locally and can be viewed on a GitHub Pages website.
 
+This repository is configured to use the `root` branch for source control.
+
 ## Installation
 
 1. Clone or download this repository.
