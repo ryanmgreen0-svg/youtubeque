@@ -1,9 +1,65 @@
 console.log('queue script loaded');
 
+function ensureQueueStyles() {
+  if (document.getElementById('youtube-queue-styles')) return;
+
+  let style = document.createElement('style');
+  style.id = 'youtube-queue-styles';
+  style.textContent = `
+    #queue-container {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: start;
+      padding: 0;
+      margin: 0;
+    }
+    .video-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      background: #fff;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .video-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+    }
+    .video-card img {
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      display: block;
+    }
+    .video-card h3 {
+      font-size: 0.9rem;
+      margin: 0;
+      line-height: 1.3;
+      min-height: 3.9em;
+      overflow: hidden;
+      text-align: left;
+    }
+    .video-card p { margin: 0; }
+  `;
+  document.head.appendChild(style);
+}
+
 function displayQueue() {
+  ensureQueueStyles();
+
   chrome.storage.local.get(['queue'], function(result) {
     let queue = result.queue || [];
     let container = document.getElementById('queue-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'queue-container';
+      document.body.appendChild(container);
+    }
     container.innerHTML = '';
     if (queue.length === 0) {
       container.innerHTML = '<p>No videos in queue.</p>';
