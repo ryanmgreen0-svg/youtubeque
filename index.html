@@ -42,7 +42,13 @@
   </style>
 </head>
 <body>
-  <h1>YouTube Video Queue</h1>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1 style="margin: 0;">Videos</h1>
+    <div id="toggle-buttons" style="display: flex; gap: 10px;">
+      <button id="home-btn" style="padding: 8px 16px; font-size: 1rem; cursor: pointer; background: #1f2937; color: white; border: none; border-radius: 4px; font-weight: bold;">Home</button>
+      <button id="yoga-btn" style="padding: 8px 16px; font-size: 1rem; cursor: pointer; background: #d1d5db; color: #1f2937; border: none; border-radius: 4px; font-weight: bold;">Yoga</button>
+    </div>
+  </div>
   <div id="queue-container">
     <!-- Queue items will be inserted here by queue.js -->
   </div>

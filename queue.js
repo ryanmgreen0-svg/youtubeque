@@ -1,5 +1,7 @@
 console.log('queue script loaded');
 
+let currentView = 'home'; // Track which view is currently displayed
+
 function ensureQueueStyles() {
   if (document.getElementById('youtube-queue-styles')) return;
 
@@ -49,11 +51,12 @@ function ensureQueueStyles() {
   document.head.appendChild(style);
 }
 
-function displayQueue() {
+function displayVideos(storageKey) {
   ensureQueueStyles();
+  currentView = storageKey;
 
-  chrome.storage.local.get(['queue'], function(result) {
-    let queue = result.queue || [];
+  chrome.storage.local.get([storageKey], function(result) {
+    let videos = result[storageKey] || [];
     let container = document.getElementById('queue-container');
     if (!container) {
       container = document.createElement('div');
@@ -61,36 +64,64 @@ function displayQueue() {
       document.body.appendChild(container);
     }
     container.innerHTML = '';
-    if (queue.length === 0) {
-      container.innerHTML = '<p>No videos in queue.</p>';
+    if (videos.length === 0) {
+      container.innerHTML = '<p>No videos in this collection.</p>';
       return;
     }
-    queue.forEach((video, index) => {
+    videos.forEach((video, index) => {
       let div = document.createElement('div');
       div.className = 'video-card';
       div.innerHTML = `
         <img src="${video.thumbnail}" alt="${video.title}">
         <h3>${video.title}</h3>
       `;
-      div.addEventListener('click', () => openVideo(index));
+      div.addEventListener('click', () => openVideo(index, storageKey));
       container.appendChild(div);
     });
   });
 }
 
-function openVideo(index) {
-  chrome.storage.local.get(['queue'], function(result) {
-    let queue = result.queue || [];
-    if (index >= 0 && index < queue.length) {
-      let video = queue.splice(index, 1)[0];
-      chrome.storage.local.set({queue: queue}, function() {
-        window.open(video.url, '_blank');
-        displayQueue();  // Refresh the display
-      });
+function openVideo(index, storageKey) {
+  chrome.storage.local.get([storageKey], function(result) {
+    let videos = result[storageKey] || [];
+    if (index >= 0 && index < videos.length) {
+      let video = videos[index];
+      window.open(video.url, '_blank');
+      // Videos stay in collection (not removed after opening)
     }
   });
 }
 
+function setupToggleButtons() {
+  let homeBtn = document.getElementById('home-btn');
+  let yogaBtn = document.getElementById('yoga-btn');
+
+  if (!homeBtn || !yogaBtn) return;
+
+  homeBtn.addEventListener('click', () => {
+    currentView = 'queue';
+    homeBtn.style.background = '#1f2937';
+    homeBtn.style.color = 'white';
+    yogaBtn.style.background = '#d1d5db';
+    yogaBtn.style.color = '#1f2937';
+    displayVideos('queue');
+  });
+
+  yogaBtn.addEventListener('click', () => {
+    currentView = 'yoga';
+    yogaBtn.style.background = '#1f2937';
+    yogaBtn.style.color = 'white';
+    homeBtn.style.background = '#d1d5db';
+    homeBtn.style.color = '#1f2937';
+    displayVideos('yoga');
+  });
+}
+
 // Display queue on load
-displayQueue();
-window.addEventListener('DOMContentLoaded', displayQueue);
+ensureQueueStyles();
+setupToggleButtons();
+displayVideos('queue');
+window.addEventListener('DOMContentLoaded', () => {
+  setupToggleButtons();
+  displayVideos('queue');
+});
