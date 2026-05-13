@@ -95,6 +95,7 @@ function openVideo(index, storageKey) {
 function setupToggleButtons() {
   let homeBtn = document.getElementById('home-btn');
   let yogaBtn = document.getElementById('yoga-btn');
+  let pageTitle = document.getElementById('page-title');
 
   if (!homeBtn || !yogaBtn) return;
 
@@ -104,6 +105,8 @@ function setupToggleButtons() {
     homeBtn.style.color = 'white';
     yogaBtn.style.background = '#d1d5db';
     yogaBtn.style.color = '#1f2937';
+    if (pageTitle) pageTitle.textContent = 'Home';
+    document.title = 'Home';
     displayVideos('queue');
   });
 
@@ -113,6 +116,8 @@ function setupToggleButtons() {
     yogaBtn.style.color = 'white';
     homeBtn.style.background = '#d1d5db';
     homeBtn.style.color = '#1f2937';
+    if (pageTitle) pageTitle.textContent = 'Yoga';
+    document.title = 'Yoga';
     displayVideos('yoga');
   });
 }
