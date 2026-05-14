@@ -15,8 +15,8 @@
     },
     {
       "matches": [
-        "https://ryanmgreen96.github.io/*",
-        "https://ryanmgreen0-svg.github.io/*"
+        "https://ryanmgreen96.github.io/youtubeque/*",
+        "https://ryanmgreen0-svg.github.io/youtubeque/*"
       ],
       "js": ["queue.js"]
     }
