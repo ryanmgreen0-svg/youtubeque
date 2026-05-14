@@ -12,16 +12,6 @@ function createQueueMenu() {
         "*://youtu.be/*"
       ]
     });
-    chrome.contextMenus.create({
-      id: "add-to-yoga",
-      title: "Add to Yoga",
-      contexts: ["all"],
-      documentUrlPatterns: [
-        "*://www.youtube.com/*",
-        "*://youtube.com/*",
-        "*://youtu.be/*"
-      ]
-    });
   });
 }
 
