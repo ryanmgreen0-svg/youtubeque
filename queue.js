@@ -1,7 +1,5 @@
 console.log('queue script loaded');
 
-let currentView = 'home'; // Track which view is currently displayed
-
 function ensureQueueStyles() {
   if (document.getElementById('youtube-queue-styles')) return;
 
@@ -53,7 +51,6 @@ function ensureQueueStyles() {
 
 function displayVideos(storageKey) {
   ensureQueueStyles();
-  currentView = storageKey;
 
   chrome.storage.local.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
@@ -87,46 +84,12 @@ function openVideo(index, storageKey) {
     if (index >= 0 && index < videos.length) {
       let video = videos[index];
       window.open(video.url, '_blank');
-      // Videos stay in collection (not removed after opening)
     }
   });
 }
 
-function setupToggleButtons() {
-  let homeBtn = document.getElementById('home-btn');
-  let yogaBtn = document.getElementById('yoga-btn');
-  let pageTitle = document.getElementById('page-title');
-
-  if (!homeBtn || !yogaBtn) return;
-
-  homeBtn.addEventListener('click', () => {
-    currentView = 'queue';
-    homeBtn.style.background = '#1f2937';
-    homeBtn.style.color = 'white';
-    yogaBtn.style.background = '#d1d5db';
-    yogaBtn.style.color = '#1f2937';
-    if (pageTitle) pageTitle.textContent = 'Home';
-    document.title = 'Home';
-    displayVideos('queue');
-  });
-
-  yogaBtn.addEventListener('click', () => {
-    currentView = 'yoga';
-    yogaBtn.style.background = '#1f2937';
-    yogaBtn.style.color = 'white';
-    homeBtn.style.background = '#d1d5db';
-    homeBtn.style.color = '#1f2937';
-    if (pageTitle) pageTitle.textContent = 'Yoga';
-    document.title = 'Yoga';
-    displayVideos('yoga');
-  });
-}
-
-// Display queue on load
 ensureQueueStyles();
-setupToggleButtons();
 displayVideos('queue');
 window.addEventListener('DOMContentLoaded', () => {
-  setupToggleButtons();
   displayVideos('queue');
 });

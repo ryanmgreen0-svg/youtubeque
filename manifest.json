@@ -18,6 +18,10 @@
         "https://ryanmgreen96.github.io/youtubeque/*",
         "https://ryanmgreen0-svg.github.io/youtubeque/*"
       ],
+      "exclude_matches": [
+        "https://ryanmgreen96.github.io/youtubeque/yoga.html*",
+        "https://ryanmgreen0-svg.github.io/youtubeque/yoga.html*"
+      ],
       "js": ["queue.js"]
     }
   ]

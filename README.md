@@ -25,6 +25,7 @@ This repository is configured to use the `root` branch for source control.
 2. Upload `index.html` to the repository.
 3. Enable GitHub Pages in the repository settings.
 4. Update the `matches` in `manifest.json` to point to your GitHub Pages URL, e.g., `https://yourusername.github.io/your-repo/*`.
+5. If you want a separate Yoga page, create and host `yoga.html` and load it with the Yoga extension.
 
 ## Files
 
