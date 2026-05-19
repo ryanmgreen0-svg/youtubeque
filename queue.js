@@ -87,6 +87,8 @@ function displayVideos(storageKey) {
       container.innerHTML = '<p>No videos in this collection.</p>';
       return;
     }
+    // Reverse the array to show most recent first
+    videos = videos.reverse();
     videos.forEach((video, index) => {
       let div = document.createElement('div');
       div.className = 'video-card';
@@ -127,8 +129,118 @@ function deleteVideo(index, storageKey) {
   });
 }
 
+function initializeQuickLinks() {
+  displayQuickLinks();
+  let addBtn = document.getElementById('quick-link-add-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      let title = prompt('Enter link title:');
+      if (title === null) return;
+      title = title.trim();
+      if (!title) return;
+      
+      let url = prompt('Enter URL:');
+      if (url === null) return;
+      url = url.trim();
+      if (!url) return;
+      
+      // Ensure URL has protocol
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      
+      addQuickLink(title, url);
+    });
+  }
+}
+
+function displayQuickLinks() {
+  chrome.storage.local.get(['quick-links'], function(result) {
+    let links = result['quick-links'] || [];
+    let container = document.getElementById('quick-links-container');
+    if (!container) return;
+    
+    let addBtn = container.querySelector('#quick-link-add-btn');
+    container.innerHTML = '';
+    
+    links.forEach((link, index) => {
+      let linkEl = document.createElement('a');
+      linkEl.className = 'quick-link';
+      linkEl.href = link.url;
+      linkEl.target = '_blank';
+      linkEl.textContent = link.title;
+      
+      let isPressed = false;
+      let pressTimer;
+      
+      linkEl.addEventListener('mousedown', () => {
+        isPressed = true;
+        pressTimer = setTimeout(() => {
+          if (isPressed) {
+            editQuickLink(index, link);
+          }
+        }, 500);
+      });
+      
+      linkEl.addEventListener('mouseup', () => {
+        isPressed = false;
+        clearTimeout(pressTimer);
+      });
+      
+      linkEl.addEventListener('mouseleave', () => {
+        isPressed = false;
+        clearTimeout(pressTimer);
+      });
+      
+      container.appendChild(linkEl);
+    });
+    
+    if (addBtn) {
+      container.appendChild(addBtn);
+    }
+  });
+}
+
+function addQuickLink(title, url) {
+  chrome.storage.local.get(['quick-links'], function(result) {
+    let links = result['quick-links'] || [];
+    links.push({ title, url });
+    chrome.storage.local.set({ 'quick-links': links }, function() {
+      displayQuickLinks();
+    });
+  });
+}
+
+function editQuickLink(index, link) {
+  let newTitle = prompt('Edit link title:', link.title);
+  if (newTitle === null) return;
+  newTitle = newTitle.trim();
+  if (!newTitle) return;
+  
+  let newUrl = prompt('Edit URL:', link.url);
+  if (newUrl === null) return;
+  newUrl = newUrl.trim();
+  if (!newUrl) return;
+  
+  if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
+    newUrl = 'https://' + newUrl;
+  }
+  
+  chrome.storage.local.get(['quick-links'], function(result) {
+    let links = result['quick-links'] || [];
+    if (index >= 0 && index < links.length) {
+      links[index] = { title: newTitle, url: newUrl };
+      chrome.storage.local.set({ 'quick-links': links }, function() {
+        displayQuickLinks();
+      });
+    }
+  });
+}
+
 ensureQueueStyles();
 displayVideos('queue');
+initializeQuickLinks();
 window.addEventListener('DOMContentLoaded', () => {
   displayVideos('queue');
+  initializeQuickLinks();
 });
