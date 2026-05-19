@@ -7,12 +7,30 @@ function ensureQueueStyles() {
   style.id = 'youtube-queue-styles';
   style.textContent = `
     #queue-container {
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      padding: 0;
+      margin: 0;
+    }
+    .video-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .video-group-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .video-group-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 12px;
       align-items: start;
-      padding: 0;
-      margin: 0;
     }
     .video-card {
       position: relative;
@@ -71,6 +89,28 @@ function ensureQueueStyles() {
   document.head.appendChild(style);
 }
 
+function getDateGroup(timestamp) {
+  if (!timestamp) return 'past';
+  
+  let videoDate = new Date(timestamp);
+  let today = new Date();
+  let yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  // Normalize to start of day for comparison
+  let videoDateNormalized = new Date(videoDate.getFullYear(), videoDate.getMonth(), videoDate.getDate());
+  let todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let yesterdayNormalized = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+  
+  if (videoDateNormalized.getTime() === todayNormalized.getTime()) {
+    return 'today';
+  } else if (videoDateNormalized.getTime() === yesterdayNormalized.getTime()) {
+    return 'yesterday';
+  } else {
+    return 'past';
+  }
+}
+
 function displayVideos(storageKey) {
   ensureQueueStyles();
 
@@ -87,25 +127,58 @@ function displayVideos(storageKey) {
       container.innerHTML = '<p>No videos in this collection.</p>';
       return;
     }
-    // Reverse the array to show most recent first
-    let originalLength = videos.length;
-    videos = videos.reverse();
-    videos.forEach((video, reversedIndex) => {
-      // Calculate the original index for delete/open operations
-      let originalIndex = originalLength - 1 - reversedIndex;
-      let div = document.createElement('div');
-      div.className = 'video-card';
-      div.innerHTML = `
-        <button class="delete-btn" aria-label="Delete video">×</button>
-        <img src="${video.thumbnail}" alt="${video.title}">
-        <h3>${video.title}</h3>
-      `;
-      div.addEventListener('click', () => openVideo(originalIndex, storageKey));
-      div.querySelector('.delete-btn').addEventListener('click', function(event) {
-        event.stopPropagation();
-        deleteVideo(originalIndex, storageKey);
+    
+    // Group videos by date
+    let groups = { today: [], yesterday: [], past: [] };
+    let originalIndices = {};
+    
+    videos.forEach((video, index) => {
+      let group = getDateGroup(video.dateAdded);
+      groups[group].push(video);
+      originalIndices[JSON.stringify(video)] = index;
+    });
+    
+    // Display groups in order
+    let groupOrder = ['today', 'yesterday', 'past'];
+    let groupLabels = { today: 'Today', yesterday: 'Yesterday', past: 'Past' };
+    
+    groupOrder.forEach((groupKey) => {
+      let groupVideos = groups[groupKey];
+      if (groupVideos.length === 0) return;
+      
+      // Reverse within group to show most recent first
+      groupVideos = groupVideos.reverse();
+      
+      let groupDiv = document.createElement('div');
+      groupDiv.className = 'video-group';
+      
+      let titleDiv = document.createElement('div');
+      titleDiv.className = 'video-group-title';
+      titleDiv.textContent = groupLabels[groupKey];
+      groupDiv.appendChild(titleDiv);
+      
+      let gridDiv = document.createElement('div');
+      gridDiv.className = 'video-group-grid';
+      
+      groupVideos.forEach((video) => {
+        let originalIndex = originalIndices[JSON.stringify(video)];
+        let div = document.createElement('div');
+        div.className = 'video-card';
+        div.innerHTML = `
+          <button class="delete-btn" aria-label="Delete video">×</button>
+          <img src="${video.thumbnail}" alt="${video.title}">
+          <h3>${video.title}</h3>
+        `;
+        div.addEventListener('click', () => openVideo(originalIndex, storageKey));
+        div.querySelector('.delete-btn').addEventListener('click', function(event) {
+          event.stopPropagation();
+          deleteVideo(originalIndex, storageKey);
+        });
+        gridDiv.appendChild(div);
       });
-      container.appendChild(div);
+      
+      groupDiv.appendChild(gridDiv);
+      container.appendChild(groupDiv);
     });
   });
 }

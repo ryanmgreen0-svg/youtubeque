@@ -43,6 +43,8 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
     if (response && response.video) {
       chrome.storage.local.get([storageKey], function(result) {
         let videos = result[storageKey] || [];
+        // Add dateAdded timestamp to the video
+        response.video.dateAdded = new Date().getTime();
         videos.push(response.video);
         let updateObj = {};
         updateObj[storageKey] = videos;
