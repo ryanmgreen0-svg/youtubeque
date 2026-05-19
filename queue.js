@@ -88,8 +88,11 @@ function displayVideos(storageKey) {
       return;
     }
     // Reverse the array to show most recent first
+    let originalLength = videos.length;
     videos = videos.reverse();
-    videos.forEach((video, index) => {
+    videos.forEach((video, reversedIndex) => {
+      // Calculate the original index for delete/open operations
+      let originalIndex = originalLength - 1 - reversedIndex;
       let div = document.createElement('div');
       div.className = 'video-card';
       div.innerHTML = `
@@ -97,10 +100,10 @@ function displayVideos(storageKey) {
         <img src="${video.thumbnail}" alt="${video.title}">
         <h3>${video.title}</h3>
       `;
-      div.addEventListener('click', () => openVideo(index, storageKey));
+      div.addEventListener('click', () => openVideo(originalIndex, storageKey));
       div.querySelector('.delete-btn').addEventListener('click', function(event) {
         event.stopPropagation();
-        deleteVideo(index, storageKey);
+        deleteVideo(originalIndex, storageKey);
       });
       container.appendChild(div);
     });
