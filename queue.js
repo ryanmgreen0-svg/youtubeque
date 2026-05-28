@@ -1,5 +1,10 @@
 console.log('queue script loaded');
 
+// Debug helper
+function debugLog(...args) {
+  if (window.console && typeof console.log === 'function') console.log('[queue.js]', ...args);
+}
+
 const storage = {
   get(keys, callback) {
     if (window.chrome && chrome.storage && chrome.storage.local && typeof chrome.storage.local.get === 'function') {
@@ -153,9 +158,11 @@ function getDateGroup(timestamp) {
 
 function displayVideos(storageKey) {
   ensureQueueStyles();
+  debugLog('displayVideos(', storageKey, ')');
 
   storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
+    debugLog('loaded', storageKey, 'count=', videos.length, videos);
     let container = document.getElementById('queue-container');
     if (!container) {
       container = document.createElement('div');
@@ -454,8 +461,11 @@ function editQuickLink(index, link) {
 }
 
 function initQueuePage() {
+  // Prefer an explicit marker on the body: <body data-collection="queue|favorites">
+  let bodyCollection = document.body && document.body.dataset && document.body.dataset.collection;
   let page = window.location.pathname.split('/').pop();
-  let storageKey = page === 'favorites.html' ? 'favorites' : 'queue';
+  let storageKey = bodyCollection ? bodyCollection : (page === 'favorites.html' ? 'favorites' : 'queue');
+  debugLog('initQueuePage: bodyCollection=', bodyCollection, 'page=', page, '=> storageKey=', storageKey);
   if (typeof displayVideos === 'function') {
     displayVideos(storageKey);
   }
@@ -465,4 +475,9 @@ function initQueuePage() {
 }
 
 ensureQueueStyles();
-document.addEventListener('DOMContentLoaded', initQueuePage);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initQueuePage);
+} else {
+  // If script loaded after DOM ready, run immediately
+  initQueuePage();
+}
