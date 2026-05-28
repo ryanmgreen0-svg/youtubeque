@@ -25,16 +25,10 @@
     <!-- Favorites will be rendered here by queue.js -->
   </div>
 
-  <script src="queue.js"></script>
   <script>
-    // After queue.js loads, render the favorites collection
-    window.addEventListener('DOMContentLoaded', () => {
-      // Ensure the queue script has exposed displayVideos
-      if (typeof displayVideos === 'function') {
-        displayVideos('favorites');
-      }
-    });
+    window.queueCollection = 'favorites';
   </script>
+  <script src="queue.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const btn = document.getElementById('clear-viewed-btn');
