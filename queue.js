@@ -415,4 +415,16 @@ function editQuickLink(index, link) {
   });
 }
 
+function initQueuePage() {
+  let page = window.location.pathname.split('/').pop();
+  let storageKey = page === 'favorites.html' ? 'favorites' : 'queue';
+  if (typeof displayVideos === 'function') {
+    displayVideos(storageKey);
+  }
+  if (storageKey === 'queue' && typeof initializeQuickLinks === 'function') {
+    initializeQuickLinks();
+  }
+}
+
 ensureQueueStyles();
+document.addEventListener('DOMContentLoaded', initQueuePage);
