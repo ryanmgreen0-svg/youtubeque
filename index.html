@@ -102,22 +102,20 @@
   <!-- Reload the queue page after adding videos to ensure the latest items are shown -->
   <script src="queue.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const btn = document.getElementById('clear-viewed-btn');
-      if (btn && typeof clearViewed === 'function') {
-        btn.addEventListener('click', function() {
-          if (confirm('Remove all viewed items from the queue?')) {
-            clearViewed('queue');
-          }
-        });
-      }
-      if (typeof displayVideos === 'function') {
-        displayVideos('queue');
-      }
-      if (typeof initializeQuickLinks === 'function') {
-        initializeQuickLinks();
-      }
-    });
+    const btn = document.getElementById('clear-viewed-btn');
+    if (btn && typeof clearViewed === 'function') {
+      btn.addEventListener('click', function() {
+        if (confirm('Remove all viewed items from the queue?')) {
+          clearViewed('queue');
+        }
+      });
+    }
+    if (typeof displayVideos === 'function') {
+      displayVideos('queue');
+    }
+    if (typeof initializeQuickLinks === 'function') {
+      initializeQuickLinks();
+    }
   </script>
 </body>
 </html>

@@ -1,5 +1,43 @@
 console.log('queue script loaded');
 
+const storage = {
+  get(keys, callback) {
+    if (window.chrome && chrome.storage && chrome.storage.local && typeof chrome.storage.local.get === 'function') {
+      chrome.storage.local.get(keys, callback);
+      return;
+    }
+    let result = {};
+    if (Array.isArray(keys)) {
+      keys.forEach(key => {
+        let value = localStorage.getItem(key);
+        try { result[key] = value ? JSON.parse(value) : undefined; } catch (e) { result[key] = undefined; }
+      });
+    } else {
+      let value = localStorage.getItem(keys);
+      try { result[keys] = value ? JSON.parse(value) : undefined; } catch (e) { result[keys] = undefined; }
+    }
+    callback(result);
+  },
+  set(obj, callback) {
+    if (window.chrome && chrome.storage && chrome.storage.local && typeof chrome.storage.local.set === 'function') {
+      chrome.storage.local.set(obj, callback);
+      return;
+    }
+    Object.entries(obj).forEach(([key, value]) => {
+      localStorage.setItem(key, JSON.stringify(value));
+    });
+    if (typeof callback === 'function') callback();
+  },
+  remove(key, callback) {
+    if (window.chrome && chrome.storage && chrome.storage.local && typeof chrome.storage.local.remove === 'function') {
+      chrome.storage.local.remove(key, callback);
+      return;
+    }
+    localStorage.removeItem(key);
+    if (typeof callback === 'function') callback();
+  }
+};
+
 function ensureQueueStyles() {
   if (document.getElementById('youtube-queue-styles')) return;
 
@@ -116,7 +154,7 @@ function getDateGroup(timestamp) {
 function displayVideos(storageKey) {
   ensureQueueStyles();
 
-  chrome.storage.local.get([storageKey], function(result) {
+  storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
     let container = document.getElementById('queue-container');
     if (!container) {
@@ -219,7 +257,7 @@ function displayVideos(storageKey) {
 
   // If rendering favorites page, flash the last favorited item as confirmation
   if (storageKey === 'favorites') {
-    chrome.storage.local.get(['lastFavorited'], function(res) {
+    storage.get(['lastFavorited'], function(res) {
       let url = res['lastFavorited'];
       if (url) {
         // Find the matching card and flash its title
@@ -233,7 +271,7 @@ function displayVideos(storageKey) {
             }
           }
           // clear the flag
-          chrome.storage.local.remove('lastFavorited');
+          storage.remove('lastFavorited');
         }, 80);
       }
     });
@@ -242,7 +280,7 @@ function displayVideos(storageKey) {
 }
 
 function favoriteVideo(index, storageKey) {
-  chrome.storage.local.get([storageKey, 'favorites'], function(result) {
+  storage.get([storageKey, 'favorites'], function(result) {
     let videos = result[storageKey] || [];
     let favorites = result['favorites'] || [];
     if (index >= 0 && index < videos.length) {
@@ -251,7 +289,7 @@ function favoriteVideo(index, storageKey) {
       if (!favorites.find(f => f.url === video.url)) {
         favorites.push(video);
       }
-      chrome.storage.local.set({[storageKey]: videos, 'favorites': favorites, 'lastFavorited': video.url}, function() {
+      storage.set({[storageKey]: videos, 'favorites': favorites, 'lastFavorited': video.url}, function() {
         displayVideos(storageKey);
       });
     }
@@ -259,24 +297,24 @@ function favoriteVideo(index, storageKey) {
 }
 
 // Ensure view-tracking only applies to videos added after this script first ran
-chrome.storage.local.get(['viewTrackingEnabledAt'], function(res) {
+storage.get(['viewTrackingEnabledAt'], function(res) {
   if (!res.viewTrackingEnabledAt) {
-    chrome.storage.local.set({ viewTrackingEnabledAt: Date.now() });
+    storage.set({ viewTrackingEnabledAt: Date.now() });
   }
 });
 
 function clearViewed(storageKey) {
-  chrome.storage.local.get([storageKey], function(result) {
+  storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
     let remaining = videos.filter(v => !v.viewed);
-    chrome.storage.local.set({[storageKey]: remaining}, function() {
+    storage.set({[storageKey]: remaining}, function() {
       displayVideos(storageKey);
     });
   });
 }
 
 function openVideo(index, storageKey) {
-  chrome.storage.local.get([storageKey, 'viewTrackingEnabledAt'], function(result) {
+  storage.get([storageKey, 'viewTrackingEnabledAt'], function(result) {
     let videos = result[storageKey] || [];
     let threshold = result.viewTrackingEnabledAt || 0;
     if (index >= 0 && index < videos.length) {
@@ -287,7 +325,7 @@ function openVideo(index, storageKey) {
       if (added && added >= threshold) {
         video.viewed = true;
         videos[index] = video;
-        chrome.storage.local.set({[storageKey]: videos}, function() {
+        storage.set({[storageKey]: videos}, function() {
           displayVideos(storageKey);
         });
       }
@@ -296,11 +334,11 @@ function openVideo(index, storageKey) {
 }
 
 function deleteVideo(index, storageKey) {
-  chrome.storage.local.get([storageKey], function(result) {
+  storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
     if (index >= 0 && index < videos.length) {
       videos.splice(index, 1);
-      chrome.storage.local.set({[storageKey]: videos}, function() {
+      storage.set({[storageKey]: videos}, function() {
         displayVideos(storageKey);
       });
     }
@@ -333,7 +371,7 @@ function initializeQuickLinks() {
 }
 
 function displayQuickLinks() {
-  chrome.storage.local.get(['quick-links'], function(result) {
+  storage.get(['quick-links'], function(result) {
     let links = result['quick-links'] || [];
     let container = document.getElementById('quick-links-container');
     if (!container) return;
@@ -380,10 +418,10 @@ function displayQuickLinks() {
 }
 
 function addQuickLink(title, url) {
-  chrome.storage.local.get(['quick-links'], function(result) {
+  storage.get(['quick-links'], function(result) {
     let links = result['quick-links'] || [];
     links.push({ title, url });
-    chrome.storage.local.set({ 'quick-links': links }, function() {
+    storage.set({ 'quick-links': links }, function() {
       displayQuickLinks();
     });
   });
@@ -404,11 +442,11 @@ function editQuickLink(index, link) {
     newUrl = 'https://' + newUrl;
   }
   
-  chrome.storage.local.get(['quick-links'], function(result) {
+  storage.get(['quick-links'], function(result) {
     let links = result['quick-links'] || [];
     if (index >= 0 && index < links.length) {
       links[index] = { title: newTitle, url: newUrl };
-      chrome.storage.local.set({ 'quick-links': links }, function() {
+      storage.set({ 'quick-links': links }, function() {
         displayQuickLinks();
       });
     }
