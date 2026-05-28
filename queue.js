@@ -175,27 +175,27 @@ function displayVideos(storageKey) {
         // Long-press to favorite (1s). Short click opens.
         let pressTimer = null;
         let didLongPress = false;
-        const startPress = (e) => {
-          e.preventDefault && e.preventDefault();
+        // Use pointer events to reduce accidental triggers
+        const onPointerDown = (e) => {
+          // only primary pointers
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
           didLongPress = false;
           pressTimer = setTimeout(() => {
             didLongPress = true;
             favoriteVideo(originalIndex, storageKey);
           }, 1000);
         };
-        const cancelPress = (e) => {
+        const onPointerUp = (e) => {
           if (pressTimer) clearTimeout(pressTimer);
           pressTimer = null;
           if (!didLongPress) {
             openVideo(originalIndex, storageKey);
           }
         };
-        div.addEventListener('mousedown', startPress);
-        div.addEventListener('touchstart', startPress);
-        div.addEventListener('mouseup', cancelPress);
-        div.addEventListener('mouseleave', cancelPress);
-        div.addEventListener('touchend', cancelPress);
-        div.addEventListener('touchcancel', cancelPress);
+        div.addEventListener('pointerdown', onPointerDown);
+        div.addEventListener('pointerup', onPointerUp);
+        div.addEventListener('pointercancel', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+        div.addEventListener('pointerleave', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
         let deleteBtn = div.querySelector('.delete-btn');
         if (video.viewed) {
           deleteBtn.style.background = '#ef4444';
@@ -253,6 +253,13 @@ function favoriteVideo(index, storageKey) {
   });
 }
 
+// Ensure view-tracking only applies to videos added after this script first ran
+chrome.storage.local.get(['viewTrackingEnabledAt'], function(res) {
+  if (!res.viewTrackingEnabledAt) {
+    chrome.storage.local.set({ viewTrackingEnabledAt: Date.now() });
+  }
+});
+
 function clearViewed(storageKey) {
   chrome.storage.local.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
@@ -264,17 +271,21 @@ function clearViewed(storageKey) {
 }
 
 function openVideo(index, storageKey) {
-  chrome.storage.local.get([storageKey], function(result) {
+  chrome.storage.local.get([storageKey, 'viewTrackingEnabledAt'], function(result) {
     let videos = result[storageKey] || [];
+    let threshold = result.viewTrackingEnabledAt || 0;
     if (index >= 0 && index < videos.length) {
       let video = videos[index];
       window.open(video.url, '_blank');
-      // mark viewed
-      video.viewed = true;
-      videos[index] = video;
-      chrome.storage.local.set({[storageKey]: videos}, function() {
-        displayVideos(storageKey);
-      });
+      // mark viewed only if the video was added after view-tracking was enabled
+      let added = video.dateAdded ? Date.parse(video.dateAdded) : 0;
+      if (added && added >= threshold) {
+        video.viewed = true;
+        videos[index] = video;
+        chrome.storage.local.set({[storageKey]: videos}, function() {
+          displayVideos(storageKey);
+        });
+      }
     }
   });
 }
@@ -402,9 +413,7 @@ function editQuickLink(index, link) {
 ensureQueueStyles();
 displayVideos('queue');
 initializeQuickLinks();
-displayFavoritesMenu();
 window.addEventListener('DOMContentLoaded', () => {
   displayVideos('queue');
   initializeQuickLinks();
-  displayFavoritesMenu();
 });
