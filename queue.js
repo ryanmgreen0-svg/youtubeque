@@ -175,10 +175,13 @@ function displayVideos(storageKey) {
         // Long-press to favorite (1s). Short click opens.
         let pressTimer = null;
         let didLongPress = false;
+        let pointerStartedOnDelete = false;
         // Use pointer events to reduce accidental triggers
         const onPointerDown = (e) => {
           // only primary pointers
           if (e.pointerType === 'mouse' && e.button !== 0) return;
+          pointerStartedOnDelete = !!e.target.closest('.delete-btn');
+          if (pointerStartedOnDelete) return;
           didLongPress = false;
           pressTimer = setTimeout(() => {
             didLongPress = true;
@@ -188,6 +191,7 @@ function displayVideos(storageKey) {
         const onPointerUp = (e) => {
           if (pressTimer) clearTimeout(pressTimer);
           pressTimer = null;
+          if (pointerStartedOnDelete) { pointerStartedOnDelete = false; return; }
           if (!didLongPress) {
             openVideo(originalIndex, storageKey);
           }
@@ -202,6 +206,7 @@ function displayVideos(storageKey) {
           deleteBtn.style.color = '#fff';
         }
         deleteBtn.addEventListener('click', function(event) {
+          event.preventDefault();
           event.stopPropagation();
           deleteVideo(originalIndex, storageKey);
         });
@@ -411,9 +416,5 @@ function editQuickLink(index, link) {
 }
 
 ensureQueueStyles();
-displayVideos('queue');
-initializeQuickLinks();
 window.addEventListener('DOMContentLoaded', () => {
-  displayVideos('queue');
-  initializeQuickLinks();
 });

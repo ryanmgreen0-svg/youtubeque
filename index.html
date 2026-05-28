@@ -111,6 +111,13 @@
           }
         });
       }
+      // Initialize the page-specific UI
+      if (typeof displayVideos === 'function') {
+        displayVideos('queue');
+      }
+      if (typeof initializeQuickLinks === 'function') {
+        initializeQuickLinks();
+      }
     });
   </script>
 </body>
