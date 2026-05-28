@@ -100,10 +100,6 @@
     <!-- Queue items will be inserted here by queue.js -->
   </div>
   <!-- Reload the queue page after adding videos to ensure the latest items are shown -->
-  <script>
-    window.queueCollection = 'queue';
-    window.initializeQuickLinksAfterLoad = true;
-  </script>
   <script src="queue.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -114,6 +110,12 @@
             clearViewed('queue');
           }
         });
+      }
+      if (typeof displayVideos === 'function') {
+        displayVideos('queue');
+      }
+      if (typeof initializeQuickLinks === 'function') {
+        initializeQuickLinks();
       }
     });
   </script>

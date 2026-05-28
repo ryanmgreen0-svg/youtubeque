@@ -25,9 +25,6 @@
     <!-- Favorites will be rendered here by queue.js -->
   </div>
 
-  <script>
-    window.queueCollection = 'favorites';
-  </script>
   <script src="queue.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -38,6 +35,9 @@
             clearViewed('favorites');
           }
         });
+      }
+      if (typeof displayVideos === 'function') {
+        displayVideos('favorites');
       }
     });
   </script>

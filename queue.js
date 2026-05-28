@@ -415,19 +415,4 @@ function editQuickLink(index, link) {
   });
 }
 
-function initQueuePage() {
-  let storageKey = window.queueCollection || 'queue';
-  if (typeof displayVideos === 'function') {
-    displayVideos(storageKey);
-  }
-  if (window.initializeQuickLinksAfterLoad && typeof initializeQuickLinks === 'function') {
-    initializeQuickLinks();
-  }
-}
-
 ensureQueueStyles();
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initQueuePage);
-} else {
-  initQueuePage();
-}
