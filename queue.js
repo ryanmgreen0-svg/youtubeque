@@ -85,6 +85,8 @@ function ensureQueueStyles() {
       text-align: left;
     }
     .video-card p { margin: 0; }
+    .flash-fav { animation: favFlash 1s ease; }
+    @keyframes favFlash { 0% { color: inherit; background: transparent } 30% { color: #fff; background: #b91c1c } 100% { color: inherit; background: transparent } }
   `;
   document.head.appendChild(style);
 }
@@ -164,13 +166,42 @@ function displayVideos(storageKey) {
         let originalIndex = originalIndices[JSON.stringify(video)];
         let div = document.createElement('div');
         div.className = 'video-card';
+        div.setAttribute('data-url', video.url || '');
         div.innerHTML = `
           <button class="delete-btn" aria-label="Delete video">×</button>
           <img src="${video.thumbnail}" alt="${video.title}">
           <h3>${video.title}</h3>
         `;
-        div.addEventListener('click', () => openVideo(originalIndex, storageKey));
-        div.querySelector('.delete-btn').addEventListener('click', function(event) {
+        // Long-press to favorite (1s). Short click opens.
+        let pressTimer = null;
+        let didLongPress = false;
+        const startPress = (e) => {
+          e.preventDefault && e.preventDefault();
+          didLongPress = false;
+          pressTimer = setTimeout(() => {
+            didLongPress = true;
+            favoriteVideo(originalIndex, storageKey);
+          }, 1000);
+        };
+        const cancelPress = (e) => {
+          if (pressTimer) clearTimeout(pressTimer);
+          pressTimer = null;
+          if (!didLongPress) {
+            openVideo(originalIndex, storageKey);
+          }
+        };
+        div.addEventListener('mousedown', startPress);
+        div.addEventListener('touchstart', startPress);
+        div.addEventListener('mouseup', cancelPress);
+        div.addEventListener('mouseleave', cancelPress);
+        div.addEventListener('touchend', cancelPress);
+        div.addEventListener('touchcancel', cancelPress);
+        let deleteBtn = div.querySelector('.delete-btn');
+        if (video.viewed) {
+          deleteBtn.style.background = '#ef4444';
+          deleteBtn.style.color = '#fff';
+        }
+        deleteBtn.addEventListener('click', function(event) {
           event.stopPropagation();
           deleteVideo(originalIndex, storageKey);
         });
@@ -179,6 +210,55 @@ function displayVideos(storageKey) {
       
       groupDiv.appendChild(gridDiv);
       container.appendChild(groupDiv);
+    });
+
+  // If rendering favorites page, flash the last favorited item as confirmation
+  if (storageKey === 'favorites') {
+    chrome.storage.local.get(['lastFavorited'], function(res) {
+      let url = res['lastFavorited'];
+      if (url) {
+        // Find the matching card and flash its title
+        setTimeout(() => {
+          let el = document.querySelector(`#queue-container .video-card[data-url="${url}"]`);
+          if (el) {
+            let title = el.querySelector('h3');
+            if (title) {
+              title.classList.add('flash-fav');
+              setTimeout(() => title.classList.remove('flash-fav'), 1200);
+            }
+          }
+          // clear the flag
+          chrome.storage.local.remove('lastFavorited');
+        }, 80);
+      }
+    });
+  }
+  });
+}
+
+function favoriteVideo(index, storageKey) {
+  chrome.storage.local.get([storageKey, 'favorites'], function(result) {
+    let videos = result[storageKey] || [];
+    let favorites = result['favorites'] || [];
+    if (index >= 0 && index < videos.length) {
+      let video = videos.splice(index, 1)[0];
+      // Avoid duplicates: check by url
+      if (!favorites.find(f => f.url === video.url)) {
+        favorites.push(video);
+      }
+      chrome.storage.local.set({[storageKey]: videos, 'favorites': favorites, 'lastFavorited': video.url}, function() {
+        displayVideos(storageKey);
+      });
+    }
+  });
+}
+
+function clearViewed(storageKey) {
+  chrome.storage.local.get([storageKey], function(result) {
+    let videos = result[storageKey] || [];
+    let remaining = videos.filter(v => !v.viewed);
+    chrome.storage.local.set({[storageKey]: remaining}, function() {
+      displayVideos(storageKey);
     });
   });
 }
@@ -189,6 +269,12 @@ function openVideo(index, storageKey) {
     if (index >= 0 && index < videos.length) {
       let video = videos[index];
       window.open(video.url, '_blank');
+      // mark viewed
+      video.viewed = true;
+      videos[index] = video;
+      chrome.storage.local.set({[storageKey]: videos}, function() {
+        displayVideos(storageKey);
+      });
     }
   });
 }
@@ -316,7 +402,9 @@ function editQuickLink(index, link) {
 ensureQueueStyles();
 displayVideos('queue');
 initializeQuickLinks();
+displayFavoritesMenu();
 window.addEventListener('DOMContentLoaded', () => {
   displayVideos('queue');
   initializeQuickLinks();
+  displayFavoritesMenu();
 });

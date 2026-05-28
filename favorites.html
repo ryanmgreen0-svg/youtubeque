@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Favorites</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    a.button { padding: 8px 16px; background:#fff; border:1px solid #ddd; border-radius:4px; text-decoration:none; color:#111; margin-right:12px; }
+  </style>
+</head>
+<body>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <h1 style="margin:0;">Favorites</h1>
+      <button id="clear-viewed-btn" style="background:#ef4444;color:#fff;border:none;padding:8px 10px;border-radius:4px;cursor:pointer;">Clear viewed</button>
+    </div>
+    <div>
+      <a href="index.html" class="button">Home</a>
+      <a href="yoga.html" class="button">Yoga Page</a>
+    </div>
+  </div>
+
+  <div id="queue-container">
+    <!-- Favorites will be rendered here by queue.js -->
+  </div>
+
+  <script src="queue.js"></script>
+  <script>
+    // After queue.js loads, render the favorites collection
+    window.addEventListener('DOMContentLoaded', () => {
+      // Ensure the queue script has exposed displayVideos
+      if (typeof displayVideos === 'function') {
+        displayVideos('favorites');
+      }
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const btn = document.getElementById('clear-viewed-btn');
+      if (btn && typeof clearViewed === 'function') {
+        btn.addEventListener('click', function() {
+          if (confirm('Remove all viewed items from favorites?')) {
+            clearViewed('favorites');
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
