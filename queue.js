@@ -92,6 +92,16 @@ function ensureQueueStyles() {
       transform: translateY(-2px);
       box-shadow: 0 8px 18px rgba(0,0,0,0.08);
     }
+    .video-card.viewed {
+      opacity: 0.68;
+      border-color: #cbd5e1;
+    }
+    .video-card.viewed h3::after {
+      content: " (watched)";
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #71717a;
+    }
     .delete-btn {
       position: absolute;
       top: 6px;
@@ -321,21 +331,17 @@ function clearViewed(storageKey) {
 }
 
 function openVideo(index, storageKey) {
-  storage.get([storageKey, 'viewTrackingEnabledAt'], function(result) {
+  storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
-    let threshold = result.viewTrackingEnabledAt || 0;
     if (index >= 0 && index < videos.length) {
       let video = videos[index];
       window.open(video.url, '_blank');
-      // mark viewed only if the video was added after view-tracking was enabled
-      let added = video.dateAdded ? Date.parse(video.dateAdded) : 0;
-      if (added && added >= threshold) {
-        video.viewed = true;
-        videos[index] = video;
-        storage.set({[storageKey]: videos}, function() {
-          displayVideos(storageKey);
-        });
-      }
+      // mark watched state for clicked items
+      video.viewed = true;
+      videos[index] = video;
+      storage.set({[storageKey]: videos}, function() {
+        displayVideos(storageKey);
+      });
     }
   });
 }
