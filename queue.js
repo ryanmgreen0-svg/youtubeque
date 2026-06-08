@@ -134,7 +134,21 @@ function ensureQueueStyles() {
 }
 
 function isViewed(video) {
-  return video && (video.viewed === true || video.viewed === 'true');
+  return video && video.viewedAt && !Number.isNaN(Number(video.viewedAt));
+}
+
+function cleanOldViewedState(videos) {
+  let changed = false;
+  let cleaned = videos.map(video => {
+    if (video && video.viewed === true && !video.viewedAt) {
+      changed = true;
+      let next = { ...video };
+      delete next.viewed;
+      return next;
+    }
+    return video;
+  });
+  return changed ? cleaned : videos;
 }
 
 function getDateGroup(timestamp) {
@@ -165,6 +179,10 @@ function displayVideos(storageKey) {
 
   storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
+    videos = cleanOldViewedState(videos);
+    if (videos.length && JSON.stringify(videos) !== result[storageKey]) {
+      localStorage.setItem(storageKey, JSON.stringify(videos));
+    }
     debugLog('loaded', storageKey, 'count=', videos.length, videos);
     let container = document.getElementById('queue-container');
     if (!container) {
@@ -401,7 +419,7 @@ function openVideo(identifier, storageKey) {
   if (index >= 0) {
     let video = videos[index];
     window.open(video.url, '_blank');
-    video.viewed = true;
+    video.viewedAt = Date.now();
     videos[index] = video;
     localStorage.setItem(storageKey, JSON.stringify(videos));
     displayVideos(storageKey);
