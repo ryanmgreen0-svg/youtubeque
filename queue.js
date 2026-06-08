@@ -6,31 +6,7 @@ function debugLog(...args) {
 }
 
 const storage = {
-  useChrome: typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local &&
-    typeof chrome.storage.local.get === 'function' && typeof chrome.storage.local.set === 'function',
   get(keys, callback) {
-    if (this.useChrome) {
-      chrome.storage.local.get(keys, (result) => {
-        if (!result || Object.keys(result).length === 0) {
-          let fallback = {};
-          if (typeof localStorage !== 'undefined') {
-            if (Array.isArray(keys)) {
-              keys.forEach(key => {
-                let value = localStorage.getItem(key);
-                try { fallback[key] = value ? JSON.parse(value) : undefined; } catch (e) { fallback[key] = undefined; }
-              });
-            } else {
-              let value = localStorage.getItem(keys);
-              try { fallback[keys] = value ? JSON.parse(value) : undefined; } catch (e) { fallback[keys] = undefined; }
-            }
-          }
-          callback(fallback);
-          return;
-        }
-        callback(result);
-      });
-      return;
-    }
     let result = {};
     if (Array.isArray(keys)) {
       keys.forEach(key => {
@@ -44,32 +20,17 @@ const storage = {
     callback(result);
   },
   set(obj, callback) {
-    if (this.useChrome) {
-      chrome.storage.local.set(obj, () => {
-        if (typeof localStorage !== 'undefined') {
-          Object.entries(obj).forEach(([key, value]) => {
-            localStorage.setItem(key, JSON.stringify(value));
-          });
-        }
-        if (typeof callback === 'function') callback();
-      });
-      return;
-    }
     Object.entries(obj).forEach(([key, value]) => {
       localStorage.setItem(key, JSON.stringify(value));
     });
     if (typeof callback === 'function') callback();
   },
   remove(key, callback) {
-    if (this.useChrome) {
-      chrome.storage.local.remove(key, callback);
-      return;
-    }
     localStorage.removeItem(key);
     if (typeof callback === 'function') callback();
   }
 };
-console.log('[queue.js] storage driver:', storage.useChrome ? 'chrome.storage.local' : 'localStorage');
+console.log('[queue.js] storage driver: localStorage');
 
 function ensureQueueStyles() {
   if (document.getElementById('youtube-queue-styles')) return;
