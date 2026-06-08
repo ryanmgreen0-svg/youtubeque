@@ -41,9 +41,9 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
 
     console.log('Queue response from content script:', response);
     if (response && response.video) {
+      response.video.id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
       chrome.storage.local.get([storageKey], function(result) {
         let videos = result[storageKey] || [];
-        // Add dateAdded timestamp to the video
         response.video.dateAdded = new Date().getTime();
         videos.push(response.video);
         let updateObj = {};

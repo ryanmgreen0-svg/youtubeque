@@ -185,7 +185,8 @@ function displayVideos(storageKey) {
     videos.forEach((video, index) => {
       let group = getDateGroup(video.dateAdded);
       groups[group].push(video);
-      originalIndices[video.url] = index;
+      let key = video.id || video.url;
+      originalIndices[key] = index;
     });
     
     // Display groups in order
@@ -211,9 +212,11 @@ function displayVideos(storageKey) {
       gridDiv.className = 'video-group-grid';
       
       groupVideos.forEach((video) => {
-        let originalIndex = originalIndices[video.url];
+        let identifier = video.id || video.url;
+        let originalIndex = originalIndices[identifier];
         let div = document.createElement('div');
         div.className = 'video-card';
+        div.setAttribute('data-id', identifier);
         div.setAttribute('data-url', video.url || '');
         div.innerHTML = `
           <button class="delete-btn" aria-label="Delete video">×</button>
@@ -241,7 +244,7 @@ function displayVideos(storageKey) {
           pressTimer = null;
           if (pointerStartedOnDelete) { pointerStartedOnDelete = false; return; }
           if (!didLongPress) {
-            openVideo(originalIndex, storageKey);
+            openVideo(identifier, storageKey);
           }
         };
         div.addEventListener('pointerdown', onPointerDown);
@@ -250,13 +253,14 @@ function displayVideos(storageKey) {
         div.addEventListener('pointerleave', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
         let deleteBtn = div.querySelector('.delete-btn');
         if (isViewed(video)) {
+          div.classList.add('viewed');
           deleteBtn.style.background = '#ef4444';
           deleteBtn.style.color = '#fff';
         }
         deleteBtn.addEventListener('click', function(event) {
           event.preventDefault();
           event.stopPropagation();
-          deleteVideo(originalIndex, storageKey);
+          deleteVideo(identifier, storageKey);
         });
         gridDiv.appendChild(div);
       });
@@ -314,83 +318,110 @@ storage.get(['viewTrackingEnabledAt'], function(res) {
 });
 
 function clearViewed(storageKey) {
-  storage.get([storageKey], function(result) {
-    let videos = result[storageKey] || [];
-    let deleted = videos.filter(isViewed);
-    let remaining = videos.filter(v => !isViewed(v));
-    console.log('[queue.js] clearViewed', {storageKey, total: videos.length, deleted: deleted.length, remaining: remaining.length});
+  let raw = localStorage.getItem(storageKey);
+  let videos = [];
+  try {
+    videos = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    videos = [];
+  }
 
-    if (deleted.length === 0) {
-      console.log('[queue.js] clearViewed: no viewed videos to remove');
-      displayVideos(storageKey);
-      updateUndoButtonState();
-      return;
-    }
+  let deleted = videos.filter(isViewed);
+  let remaining = videos.filter(v => !isViewed(v));
+  console.log('[queue.js] clearViewed', {storageKey, total: videos.length, deleted: deleted.length, remaining: remaining.length});
 
-    storage.set({[storageKey]: remaining, 'undoBackupQueue': videos, 'undoBackupStorageKey': storageKey}, function() {
-      storage.get([storageKey], function(verifyResult) {
-        console.log('[queue.js] clearViewed verify', verifyResult[storageKey]?.length);
-      });
-      displayVideos(storageKey);
-      updateUndoButtonState();
-    });
-  });
+  if (deleted.length === 0) {
+    console.log('[queue.js] clearViewed: no viewed videos to remove');
+    displayVideos(storageKey);
+    updateUndoButtonState();
+    return;
+  }
+
+  localStorage.setItem(storageKey, JSON.stringify(remaining));
+  localStorage.setItem('undoBackupQueue', JSON.stringify(videos));
+  localStorage.setItem('undoBackupStorageKey', storageKey);
+
+  displayVideos(storageKey);
+  updateUndoButtonState();
 }
 
 function undoDelete() {
-  storage.get(['undoBackupQueue', 'undoBackupStorageKey'], function(result) {
-    let backup = result['undoBackupQueue'] || [];
-    let storageKey = result['undoBackupStorageKey'];
-    console.log('[queue.js] undoDelete', {storageKey, backupCount: backup.length});
+  let backupRaw = localStorage.getItem('undoBackupQueue');
+  let storageKey = localStorage.getItem('undoBackupStorageKey');
+  let backup = [];
 
-    if (!backup || backup.length === 0 || !storageKey) {
-      console.log('[queue.js] undoDelete: nothing to undo');
-      return;
-    }
+  try {
+    backup = backupRaw ? JSON.parse(backupRaw) : [];
+  } catch (e) {
+    backup = [];
+  }
 
-    storage.set({[storageKey]: backup, 'undoBackupQueue': [], 'undoBackupStorageKey': null}, function() {
-      displayVideos(storageKey);
-      updateUndoButtonState();
-    });
-  });
+  console.log('[queue.js] undoDelete', {storageKey, backupCount: backup.length});
+
+  if (!storageKey || backup.length === 0) {
+    console.log('[queue.js] undoDelete: nothing to undo');
+    return;
+  }
+
+  localStorage.setItem(storageKey, JSON.stringify(backup));
+  localStorage.removeItem('undoBackupQueue');
+  localStorage.removeItem('undoBackupStorageKey');
+
+  displayVideos(storageKey);
+  updateUndoButtonState();
 }
 
 function updateUndoButtonState() {
   let undoBtn = document.getElementById('undo-delete-btn');
   if (!undoBtn) return;
-  storage.get(['undoBackupQueue'], function(result) {
-    let backup = result['undoBackupQueue'] || [];
-    undoBtn.disabled = backup.length === 0;
-    console.log('[queue.js] updateUndoButtonState', {disabled: undoBtn.disabled, backupCount: backup.length});
-  });
+  let backupRaw = localStorage.getItem('undoBackupQueue');
+  let backup = [];
+  try {
+    backup = backupRaw ? JSON.parse(backupRaw) : [];
+  } catch (e) {
+    backup = [];
+  }
+  undoBtn.disabled = backup.length === 0;
+  console.log('[queue.js] updateUndoButtonState', {disabled: undoBtn.disabled, backupCount: backup.length});
 }
 
-function openVideo(index, storageKey) {
-  storage.get([storageKey], function(result) {
-    let videos = result[storageKey] || [];
-    if (index >= 0 && index < videos.length) {
-      let video = videos[index];
-      window.open(video.url, '_blank');
-      // mark watched state for clicked items
-      video.viewed = true;
-      videos[index] = video;
-      storage.set({[storageKey]: videos}, function() {
-        displayVideos(storageKey);
-      });
-    }
-  });
+function findVideoIndex(videos, identifier) {
+  return videos.findIndex(v => (v.id && v.id === identifier) || v.url === identifier);
 }
 
-function deleteVideo(index, storageKey) {
-  storage.get([storageKey], function(result) {
-    let videos = result[storageKey] || [];
-    if (index >= 0 && index < videos.length) {
-      videos.splice(index, 1);
-      storage.set({[storageKey]: videos}, function() {
-        displayVideos(storageKey);
-      });
-    }
-  });
+function openVideo(identifier, storageKey) {
+  let raw = localStorage.getItem(storageKey);
+  let videos = [];
+  try {
+    videos = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    videos = [];
+  }
+  let index = findVideoIndex(videos, identifier);
+  if (index >= 0) {
+    let video = videos[index];
+    window.open(video.url, '_blank');
+    video.viewed = true;
+    videos[index] = video;
+    localStorage.setItem(storageKey, JSON.stringify(videos));
+    displayVideos(storageKey);
+  }
+}
+
+function deleteVideo(identifier, storageKey) {
+  let raw = localStorage.getItem(storageKey);
+  let videos = [];
+  try {
+    videos = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    videos = [];
+  }
+  let index = findVideoIndex(videos, identifier);
+  if (index >= 0) {
+    videos.splice(index, 1);
+    localStorage.setItem(storageKey, JSON.stringify(videos));
+    displayVideos(storageKey);
+  }
 }
 
 function initializeQuickLinks() {
@@ -512,6 +543,9 @@ function initQueuePage() {
   }
   if (storageKey === 'queue' && typeof initializeQuickLinks === 'function') {
     initializeQuickLinks();
+  }
+  if (typeof updateUndoButtonState === 'function') {
+    updateUndoButtonState();
   }
 }
 
