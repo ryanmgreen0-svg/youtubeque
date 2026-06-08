@@ -6,9 +6,29 @@ function debugLog(...args) {
 }
 
 const storage = {
+  useChrome: typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local &&
+    typeof chrome.storage.local.get === 'function' && typeof chrome.storage.local.set === 'function',
   get(keys, callback) {
-    if (window.chrome && chrome.storage && chrome.storage.local && typeof chrome.storage.local.get === 'function') {
-      chrome.storage.local.get(keys, callback);
+    if (this.useChrome) {
+      chrome.storage.local.get(keys, (result) => {
+        if (!result || Object.keys(result).length === 0) {
+          let fallback = {};
+          if (typeof localStorage !== 'undefined') {
+            if (Array.isArray(keys)) {
+              keys.forEach(key => {
+                let value = localStorage.getItem(key);
+                try { fallback[key] = value ? JSON.parse(value) : undefined; } catch (e) { fallback[key] = undefined; }
+              });
+            } else {
+              let value = localStorage.getItem(keys);
+              try { fallback[keys] = value ? JSON.parse(value) : undefined; } catch (e) { fallback[keys] = undefined; }
+            }
+          }
+          callback(fallback);
+          return;
+        }
+        callback(result);
+      });
       return;
     }
     let result = {};
@@ -24,8 +44,15 @@ const storage = {
     callback(result);
   },
   set(obj, callback) {
-    if (window.chrome && chrome.storage && chrome.storage.local && typeof chrome.storage.local.set === 'function') {
-      chrome.storage.local.set(obj, callback);
+    if (this.useChrome) {
+      chrome.storage.local.set(obj, () => {
+        if (typeof localStorage !== 'undefined') {
+          Object.entries(obj).forEach(([key, value]) => {
+            localStorage.setItem(key, JSON.stringify(value));
+          });
+        }
+        if (typeof callback === 'function') callback();
+      });
       return;
     }
     Object.entries(obj).forEach(([key, value]) => {
@@ -34,7 +61,7 @@ const storage = {
     if (typeof callback === 'function') callback();
   },
   remove(key, callback) {
-    if (window.chrome && chrome.storage && chrome.storage.local && typeof chrome.storage.local.remove === 'function') {
+    if (this.useChrome) {
       chrome.storage.local.remove(key, callback);
       return;
     }
@@ -42,6 +69,7 @@ const storage = {
     if (typeof callback === 'function') callback();
   }
 };
+console.log('[queue.js] storage driver:', storage.useChrome ? 'chrome.storage.local' : 'localStorage');
 
 function ensureQueueStyles() {
   if (document.getElementById('youtube-queue-styles')) return;
@@ -142,6 +170,10 @@ function ensureQueueStyles() {
     @keyframes favFlash { 0% { color: inherit; background: transparent } 30% { color: #fff; background: #b91c1c } 100% { color: inherit; background: transparent } }
   `;
   document.head.appendChild(style);
+}
+
+function isViewed(video) {
+  return video && (video.viewed === true || video.viewed === 'true');
 }
 
 function getDateGroup(timestamp) {
@@ -256,7 +288,7 @@ function displayVideos(storageKey) {
         div.addEventListener('pointercancel', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
         div.addEventListener('pointerleave', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
         let deleteBtn = div.querySelector('.delete-btn');
-        if (video.viewed) {
+        if (isViewed(video)) {
           deleteBtn.style.background = '#ef4444';
           deleteBtn.style.color = '#fff';
         }
@@ -320,21 +352,24 @@ storage.get(['viewTrackingEnabledAt'], function(res) {
   }
 });
 
-// Global undo state
-let lastDeletedVideos = [];
-let lastDeletedStorageKey = null;
-
 function clearViewed(storageKey) {
   storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
-    let deleted = videos.filter(v => v.viewed);
-    let remaining = videos.filter(v => !v.viewed);
-    
-    // Save undo state in memory and storage
-    lastDeletedVideos = deleted;
-    lastDeletedStorageKey = storageKey;
-    
-    storage.set({[storageKey]: remaining, 'lastDeletedVideos': deleted, 'lastDeletedStorageKey': storageKey}, function() {
+    let deleted = videos.filter(isViewed);
+    let remaining = videos.filter(v => !isViewed(v));
+    console.log('[queue.js] clearViewed', {storageKey, total: videos.length, deleted: deleted.length, remaining: remaining.length});
+
+    if (deleted.length === 0) {
+      console.log('[queue.js] clearViewed: no viewed videos to remove');
+      displayVideos(storageKey);
+      updateUndoButtonState();
+      return;
+    }
+
+    storage.set({[storageKey]: remaining, 'undoBackupQueue': videos, 'undoBackupStorageKey': storageKey}, function() {
+      storage.get([storageKey], function(verifyResult) {
+        console.log('[queue.js] clearViewed verify', verifyResult[storageKey]?.length);
+      });
       displayVideos(storageKey);
       updateUndoButtonState();
     });
@@ -342,26 +377,17 @@ function clearViewed(storageKey) {
 }
 
 function undoDelete() {
-  debugLog('undoDelete called, lastDeletedVideos=', lastDeletedVideos.length, 'storageKey=', lastDeletedStorageKey);
-  
-  if (!lastDeletedVideos || lastDeletedVideos.length === 0 || !lastDeletedStorageKey) {
-    debugLog('undoDelete: nothing to undo');
-    return;
-  }
-  
-  let storageKey = lastDeletedStorageKey;
-  let deleted = lastDeletedVideos;
-  
-  storage.get([storageKey], function(result) {
-    let videos = result[storageKey] || [];
-    let restored = videos.concat(deleted);
-    
-    // Clear undo state
-    lastDeletedVideos = [];
-    lastDeletedStorageKey = null;
-    
-    storage.set({[storageKey]: restored, 'lastDeletedVideos': [], 'lastDeletedStorageKey': null}, function() {
-      debugLog('undoDelete complete, restored', restored.length, 'videos');
+  storage.get(['undoBackupQueue', 'undoBackupStorageKey'], function(result) {
+    let backup = result['undoBackupQueue'] || [];
+    let storageKey = result['undoBackupStorageKey'];
+    console.log('[queue.js] undoDelete', {storageKey, backupCount: backup.length});
+
+    if (!backup || backup.length === 0 || !storageKey) {
+      console.log('[queue.js] undoDelete: nothing to undo');
+      return;
+    }
+
+    storage.set({[storageKey]: backup, 'undoBackupQueue': [], 'undoBackupStorageKey': null}, function() {
       displayVideos(storageKey);
       updateUndoButtonState();
     });
@@ -371,8 +397,11 @@ function undoDelete() {
 function updateUndoButtonState() {
   let undoBtn = document.getElementById('undo-delete-btn');
   if (!undoBtn) return;
-  undoBtn.disabled = lastDeletedVideos.length === 0;
-  debugLog('updateUndoButtonState: button disabled=', undoBtn.disabled);
+  storage.get(['undoBackupQueue'], function(result) {
+    let backup = result['undoBackupQueue'] || [];
+    undoBtn.disabled = backup.length === 0;
+    console.log('[queue.js] updateUndoButtonState', {disabled: undoBtn.disabled, backupCount: backup.length});
+  });
 }
 
 function openVideo(index, storageKey) {
