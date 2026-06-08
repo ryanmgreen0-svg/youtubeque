@@ -192,7 +192,7 @@ function displayVideos(storageKey) {
     videos.forEach((video, index) => {
       let group = getDateGroup(video.dateAdded);
       groups[group].push(video);
-      originalIndices[JSON.stringify(video)] = index;
+      originalIndices[video.url] = index;
     });
     
     // Display groups in order
@@ -218,7 +218,7 @@ function displayVideos(storageKey) {
       gridDiv.className = 'video-group-grid';
       
       groupVideos.forEach((video) => {
-        let originalIndex = originalIndices[JSON.stringify(video)];
+        let originalIndex = originalIndices[video.url];
         let div = document.createElement('div');
         div.className = 'video-card';
         div.setAttribute('data-url', video.url || '');
@@ -323,10 +323,38 @@ storage.get(['viewTrackingEnabledAt'], function(res) {
 function clearViewed(storageKey) {
   storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
+    let deleted = videos.filter(v => v.viewed);
     let remaining = videos.filter(v => !v.viewed);
-    storage.set({[storageKey]: remaining}, function() {
+    storage.set({[storageKey]: remaining, 'lastDeletedVideos': deleted, 'lastDeletedStorageKey': storageKey}, function() {
       displayVideos(storageKey);
+      updateUndoButtonState();
     });
+  });
+}
+
+function undoDelete() {
+  storage.get(['lastDeletedVideos', 'lastDeletedStorageKey'], function(result) {
+    let deleted = result['lastDeletedVideos'] || [];
+    let storageKey = result['lastDeletedStorageKey'];
+    if (deleted.length === 0 || !storageKey) return;
+    
+    storage.get([storageKey], function(getResult) {
+      let videos = getResult[storageKey] || [];
+      let restored = videos.concat(deleted);
+      storage.set({[storageKey]: restored, 'lastDeletedVideos': [], 'lastDeletedStorageKey': null}, function() {
+        displayVideos(storageKey);
+        updateUndoButtonState();
+      });
+    });
+  });
+}
+
+function updateUndoButtonState() {
+  let undoBtn = document.getElementById('undo-delete-btn');
+  if (!undoBtn) return;
+  storage.get(['lastDeletedVideos'], function(result) {
+    let deleted = result['lastDeletedVideos'] || [];
+    undoBtn.disabled = deleted.length === 0;
   });
 }
 
