@@ -320,11 +320,20 @@ storage.get(['viewTrackingEnabledAt'], function(res) {
   }
 });
 
+// Global undo state
+let lastDeletedVideos = [];
+let lastDeletedStorageKey = null;
+
 function clearViewed(storageKey) {
   storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
     let deleted = videos.filter(v => v.viewed);
     let remaining = videos.filter(v => !v.viewed);
+    
+    // Save undo state in memory and storage
+    lastDeletedVideos = deleted;
+    lastDeletedStorageKey = storageKey;
+    
     storage.set({[storageKey]: remaining, 'lastDeletedVideos': deleted, 'lastDeletedStorageKey': storageKey}, function() {
       displayVideos(storageKey);
       updateUndoButtonState();
@@ -333,18 +342,28 @@ function clearViewed(storageKey) {
 }
 
 function undoDelete() {
-  storage.get(['lastDeletedVideos', 'lastDeletedStorageKey'], function(result) {
-    let deleted = result['lastDeletedVideos'] || [];
-    let storageKey = result['lastDeletedStorageKey'];
-    if (deleted.length === 0 || !storageKey) return;
+  debugLog('undoDelete called, lastDeletedVideos=', lastDeletedVideos.length, 'storageKey=', lastDeletedStorageKey);
+  
+  if (!lastDeletedVideos || lastDeletedVideos.length === 0 || !lastDeletedStorageKey) {
+    debugLog('undoDelete: nothing to undo');
+    return;
+  }
+  
+  let storageKey = lastDeletedStorageKey;
+  let deleted = lastDeletedVideos;
+  
+  storage.get([storageKey], function(result) {
+    let videos = result[storageKey] || [];
+    let restored = videos.concat(deleted);
     
-    storage.get([storageKey], function(getResult) {
-      let videos = getResult[storageKey] || [];
-      let restored = videos.concat(deleted);
-      storage.set({[storageKey]: restored, 'lastDeletedVideos': [], 'lastDeletedStorageKey': null}, function() {
-        displayVideos(storageKey);
-        updateUndoButtonState();
-      });
+    // Clear undo state
+    lastDeletedVideos = [];
+    lastDeletedStorageKey = null;
+    
+    storage.set({[storageKey]: restored, 'lastDeletedVideos': [], 'lastDeletedStorageKey': null}, function() {
+      debugLog('undoDelete complete, restored', restored.length, 'videos');
+      displayVideos(storageKey);
+      updateUndoButtonState();
     });
   });
 }
@@ -352,10 +371,8 @@ function undoDelete() {
 function updateUndoButtonState() {
   let undoBtn = document.getElementById('undo-delete-btn');
   if (!undoBtn) return;
-  storage.get(['lastDeletedVideos'], function(result) {
-    let deleted = result['lastDeletedVideos'] || [];
-    undoBtn.disabled = deleted.length === 0;
-  });
+  undoBtn.disabled = lastDeletedVideos.length === 0;
+  debugLog('updateUndoButtonState: button disabled=', undoBtn.disabled);
 }
 
 function openVideo(index, storageKey) {
