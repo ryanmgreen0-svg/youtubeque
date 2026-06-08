@@ -133,22 +133,55 @@ function ensureQueueStyles() {
   document.head.appendChild(style);
 }
 
-function isViewed(video) {
-  return video && video.viewedAt && !Number.isNaN(Number(video.viewedAt));
+const WATCHED_SET_KEY_SUFFIX = '-watchedIds';
+
+function getWatchedIds(storageKey) {
+  let raw = localStorage.getItem(storageKey + WATCHED_SET_KEY_SUFFIX);
+  if (!raw) return {};
+  try {
+    let parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (e) {
+    return {};
+  }
 }
 
-function cleanOldViewedState(videos) {
-  let changed = false;
-  let cleaned = videos.map(video => {
-    if (video && video.viewed === true && !video.viewedAt) {
-      changed = true;
-      let next = { ...video };
-      delete next.viewed;
-      return next;
+function saveWatchedIds(storageKey, watchedIds) {
+  localStorage.setItem(storageKey + WATCHED_SET_KEY_SUFFIX, JSON.stringify(watchedIds));
+}
+
+function markWatched(identifier, storageKey) {
+  let watchedIds = getWatchedIds(storageKey);
+  watchedIds[identifier] = true;
+  saveWatchedIds(storageKey, watchedIds);
+}
+
+function unmarkWatched(identifier, storageKey) {
+  let watchedIds = getWatchedIds(storageKey);
+  if (watchedIds[identifier]) {
+    delete watchedIds[identifier];
+    saveWatchedIds(storageKey, watchedIds);
+  }
+}
+
+function clearWatched(storageKey, remainingVideos) {
+  let watchedIds = getWatchedIds(storageKey);
+  let remainingIds = remainingVideos.reduce((acc, video) => {
+    let identifier = video.id || video.url;
+    if (identifier && watchedIds[identifier]) {
+      acc[identifier] = true;
     }
-    return video;
-  });
-  return changed ? cleaned : videos;
+    return acc;
+  }, {});
+  saveWatchedIds(storageKey, remainingIds);
+}
+
+function isViewed(video, storageKey) {
+  if (!video) return false;
+  let identifier = video.id || video.url;
+  if (!identifier) return false;
+  let watchedIds = getWatchedIds(storageKey);
+  return Boolean(watchedIds[identifier]);
 }
 
 function getDateGroup(timestamp) {
@@ -179,10 +212,6 @@ function displayVideos(storageKey) {
 
   storage.get([storageKey], function(result) {
     let videos = result[storageKey] || [];
-    videos = cleanOldViewedState(videos);
-    if (videos.length && JSON.stringify(videos) !== result[storageKey]) {
-      localStorage.setItem(storageKey, JSON.stringify(videos));
-    }
     debugLog('loaded', storageKey, 'count=', videos.length, videos);
     let container = document.getElementById('queue-container');
     if (!container) {
@@ -270,7 +299,7 @@ function displayVideos(storageKey) {
         div.addEventListener('pointercancel', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
         div.addEventListener('pointerleave', () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
         let deleteBtn = div.querySelector('.delete-btn');
-        if (isViewed(video)) {
+        if (isViewed(video, storageKey)) {
           div.classList.add('viewed');
           deleteBtn.style.background = '#ef4444';
           deleteBtn.style.color = '#fff';
@@ -344,8 +373,8 @@ function clearViewed(storageKey) {
     videos = [];
   }
 
-  let deleted = videos.filter(isViewed);
-  let remaining = videos.filter(v => !isViewed(v));
+  let deleted = videos.filter(video => isViewed(video, storageKey));
+  let remaining = videos.filter(video => !isViewed(video, storageKey));
   console.log('[queue.js] clearViewed', {storageKey, total: videos.length, deleted: deleted.length, remaining: remaining.length});
 
   if (deleted.length === 0) {
@@ -358,6 +387,7 @@ function clearViewed(storageKey) {
   localStorage.setItem(storageKey, JSON.stringify(remaining));
   localStorage.setItem('undoBackupQueue', JSON.stringify(videos));
   localStorage.setItem('undoBackupStorageKey', storageKey);
+  clearWatched(storageKey, remaining);
 
   displayVideos(storageKey);
   updateUndoButtonState();
@@ -419,9 +449,8 @@ function openVideo(identifier, storageKey) {
   if (index >= 0) {
     let video = videos[index];
     window.open(video.url, '_blank');
-    video.viewedAt = Date.now();
-    videos[index] = video;
-    localStorage.setItem(storageKey, JSON.stringify(videos));
+    let identifier = video.id || video.url;
+    markWatched(identifier, storageKey);
     displayVideos(storageKey);
   }
 }
@@ -436,8 +465,10 @@ function deleteVideo(identifier, storageKey) {
   }
   let index = findVideoIndex(videos, identifier);
   if (index >= 0) {
+    let identifier = videos[index].id || videos[index].url;
     videos.splice(index, 1);
     localStorage.setItem(storageKey, JSON.stringify(videos));
+    unmarkWatched(identifier, storageKey);
     displayVideos(storageKey);
   }
 }
