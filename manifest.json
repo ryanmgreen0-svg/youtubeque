@@ -1,19 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Queue",
+  "name": "YouTube Queue - Yoga",
   "version": "1.0",
-  "description": "Save YouTube videos to a queue and view on GitHub website",
+  "author": "ryanmgreen0-svg",
+  "description": "Save YouTube videos to the Yoga collection and view them on a dedicated page.",
   "permissions": ["contextMenus", "storage", "activeTab", "tabs"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["*://www.youtube.com/*", "*://youtu.be/*"],
+      "matches": ["*://*.youtube.com/*", "*://youtube.com/*", "*://*.youtu.be/*", "*://youtu.be/*"],
       "js": ["content.js"]
     },
     {
-      "matches": ["https://ryanmgreen96.github.io/youtubeque/*"],
+      "matches": [
+        "https://ryanmgreen96.github.io/youtubeque/yoga.html*",
+        "https://ryanmgreen0-svg.github.io/youtubeque/yoga.html*"
+      ],
       "js": ["queue.js"]
     }
   ]
